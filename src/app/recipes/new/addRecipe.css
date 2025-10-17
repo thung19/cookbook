@@ -1,0 +1,42 @@
+/* addRecipe.css */
+.form-container {
+  max-width: 672px; /* same as Tailwind's max-w-2xl */
+  margin: 0 auto;   /* same as mx-auto */
+  padding: 1.5rem;  /* same as p-6 */
+}
+
+.form-title {
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 700;  /* font-bold */
+  margin-bottom: 1rem; /* mb-4 */
+}
+
+.form-field {
+  margin-bottom: 1rem; /* space-y-4 */
+}
+
+.label {
+  display: block;
+  font-weight: 500; /* font-medium */
+  margin-bottom: 0.25rem;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid #d1d5db; /* Tailwind border color */
+  border-radius: 0.25rem; /* rounded */
+  padding: 0.5rem 0.75rem; /* py-2 px-3 */
+}
+
+.submit-button {
+  background-color: #2563eb; /* bg-blue-600 */
+  color: white;
+  padding: 0.5rem 1rem; /* py-2 px-4 */
+  border-radius: 0.25rem; /* rounded */
+  cursor: pointer;
+}
+
+.submit-button:hover {
+  background-color: #1d4ed8; /* hover:bg-blue-700 */
+}
