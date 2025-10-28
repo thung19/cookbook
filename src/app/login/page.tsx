@@ -55,19 +55,54 @@ export default function LoginPage() {
   // If successful, the user is redirected to the home page (`/`).
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log("handleLogin invoked", { emailPresent: !!email, passwordPresent: !!password }); //debug
+
+
     setError(null);
     setLoading(true);
+      
+    //debug
+    console.log("supabase client (from import):", supabase);
+    console.log("Calling signInWithPassword...");
+
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
+    //debug
+    console.log("signInWithPassword result", { data, error });
+
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
     }
+
+  if (data?.session) {
+    try {
+      const resp = await fetch('/api/auth/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // allow cookies to be set
+        body: JSON.stringify({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        }),
+      });
+
+      if (!resp.ok) {
+        console.error('Failed to set server session cookie', await resp.text());
+        // optionally set an error to show user
+      } else {
+        console.log('Server session cookie set');
+      }
+    } catch (err) {
+      console.error('Error posting tokens to server:', err);
+    }
+}
 
     // Redirect to home page after login
     router.push('/');
