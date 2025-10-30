@@ -1,34 +1,54 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { createSupabaseRouteClient } from "@/lib/supabaseRoute";
+import { NextResponse, type NextRequest } from 'next/server';
+import { createSupabaseRouteClient } from '@/lib/supabaseRoute';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const { access_token, refresh_token } = body ?? {};
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { access_token, refresh_token } = body ?? {};
 
-  if (!access_token || !refresh_token) {
-    return new NextResponse("Missing tokens", { status: 400 });
-  }
+    if (!access_token || !refresh_token) {
+      return NextResponse.json({ error: 'Missing tokens' }, { status: 400 });
+    }
 
-  // Create a NextResponse so the helper can set cookies on it
-  const res = NextResponse.next();
+    const res = NextResponse.json({ ok: true });
+    const supabase = createSupabaseRouteClient(req, res);
 
-  // createSupabaseRouteClient expects (req, res) to bind cookie helpers
-  const supabase = createSupabaseRouteClient(req, res);
-
-  // Set the server session (writes HTTP-only cookies)
-  const { data, error } = await supabase.auth.setSession({
-    access_token,
-    refresh_token,
-  });
-
-  if (error) {
-    console.error("supabase.auth.setSession error:", error);
-    return new NextResponse(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+    const { data, error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
     });
-  }
 
-  // Return the response that now includes cookies set by the helper
-  return res;
+    if (error) {
+      console.error('[/api/auth/set] supabase.auth.setSession error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ✅ Ensure user exists in database after setting session
+    if (data.user) {
+      try {
+        await prisma.user.upsert({
+          where: { id: data.user.id },
+          update: { 
+            email: data.user.email ?? '',
+            username: data.user.user_metadata?.name || data.user.email?.split('@')[0] || `user_${data.user.id.slice(0, 8)}`,
+          },
+          create: {
+            id: data.user.id,
+            email: data.user.email ?? '',
+            username: data.user.user_metadata?.name || data.user.email?.split('@')[0] || `user_${data.user.id.slice(0, 8)}`,
+          },
+        });
+        console.log('[/api/auth/set] User synced to database:', data.user.id);
+      } catch (e) {
+        console.error('[/api/auth/set] prisma upsert error:', e);
+      }
+    }
+
+    res.headers.set('x-supabase-session', 'set');
+    return res;
+  } catch (err) {
+    console.error('[/api/auth/set] unexpected error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

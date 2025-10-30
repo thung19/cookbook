@@ -1,161 +1,108 @@
-// ======================================================
-// src/app/login/page.tsx
-// ======================================================
-//
-// 🔍 OVERVIEW
-// This file defines the **Login Page** of your app (route: `/login`).
-// It provides a simple form where users can log into their accounts
-// using Supabase authentication.
-//
-// 🧩 How it fits into your stack:
-//
-// - Uses the Supabase client (`lib/supabase.ts`) to sign in users via email/password.
-// - On successful login, Supabase automatically updates the session cookies.
-// - The `AuthProvider` and `middleware.ts` handle the rest of the session tracking.
-// - Once signed in, users are redirected to the homepage (`/`) or another route.
-//
-// This page is a **Client Component**, since it uses React hooks
-// (`useState`, `useEffect`) and directly interacts with Supabase from the browser.
-//
-
 'use client';
 
-import { useState } from 'react';                   // React hooks for state management
-import { useRouter } from 'next/navigation';        // Next.js router for redirects
-import { supabase } from '@/lib/supabase';          // Client-side Supabase instance
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
-// ------------------------------------------------------
-// Component: LoginPage
-// ------------------------------------------------------
-//
-// Renders a login form that allows users to sign in with their email and password.
-// On submit:
-//   1. Calls Supabase’s `signInWithPassword` method.
-//   2. Shows success or error messages.
-//   3. Redirects the user after successful authentication.
-//
+/**
+ * Login page (client). After successful sign-in we POST tokens to
+ * /api/auth/set so the server can persist httpOnly cookies for SSR.
+ */
 export default function LoginPage() {
-  // ------------------------------------------------------
-  // State Variables
-  // ------------------------------------------------------
-  //
-  // Store the user’s input and the loading state.
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter(); // Used to navigate after login
 
-  // ------------------------------------------------------
-  // Function: handleLogin
-  // ------------------------------------------------------
-  //
-  // Triggered when the user submits the login form.
-  // It calls Supabase to verify the credentials.
-  // If successful, the user is redirected to the home page (`/`).
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-
-    console.log("handleLogin invoked", { emailPresent: !!email, passwordPresent: !!password }); //debug
-
-
-    setError(null);
     setLoading(true);
-      
-    //debug
-    console.log("supabase client (from import):", supabase);
-    console.log("Calling signInWithPassword...");
+    setError(null);
 
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    //debug
-    console.log("signInWithPassword result", { data, error });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-  if (data?.session) {
     try {
-      const resp = await fetch('/api/auth/set', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // allow cookies to be set
-        body: JSON.stringify({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (!resp.ok) {
-        console.error('Failed to set server session cookie', await resp.text());
-        // optionally set an error to show user
-      } else {
+      console.log('signInWithPassword result', { data, error });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data?.session) {
+        const resp = await fetch('/api/auth/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          }),
+        });
+
+        if (!resp.ok) {
+          const body = await resp.text();
+          console.error('Failed to set server session cookie', body);
+          setError('Server session sync failed');
+          setLoading(false);
+          return;
+        }
+
         console.log('Server session cookie set');
       }
+
+      router.push('/');
+      router.refresh();
     } catch (err) {
-      console.error('Error posting tokens to server:', err);
+      console.error('[handleLogin] unexpected error', err);
+      setError('Unexpected error');
+    } finally {
+      setLoading(false);
     }
-}
+  }
 
-    // Redirect to home page after login
-    router.push('/');
-    router.refresh(); // Refresh the route to update session-based UI
-  };
-
-  // ------------------------------------------------------
-  // Render the Login Form
-  // ------------------------------------------------------
-  //
-  // The form includes controlled input fields for email and password,
-  // a login button, and simple error handling.
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6">
-      <h1 className="text-2xl font-bold mb-6">Login</h1>
+    <main className="max-w-md mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Log in</h1>
 
-      {/* Error message display */}
-      {error && <p className="text-red-500 mb-4">{error}</p>}
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium">Email</label>
+          <input
+            className="w-full border p-2 rounded"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            required
+          />
+        </div>
 
-      {/* Login form */}
-      <form
-        onSubmit={handleLogin}
-        className="flex flex-col gap-4 w-full max-w-sm"
-      >
-        {/* Email input */}
-        <input
-          type="email"
-          placeholder="Email"
-          className="border p-2 rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <div>
+          <label className="block text-sm font-medium">Password</label>
+          <input
+            className="w-full border p-2 rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            required
+          />
+        </div>
 
-        {/* Password input */}
-        <input
-          type="password"
-          placeholder="Password"
-          className="border p-2 rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        {error && <p className="text-red-600">{error}</p>}
 
-        {/* Submit button */}
         <button
           type="submit"
-          className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
           disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-    </div>
+    </main>
   );
 }

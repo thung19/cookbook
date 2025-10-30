@@ -36,8 +36,8 @@ import type { ReactNode } from "react";    // TypeScript type for any valid Reac
 const links = [
   { href: "/", label: "Home" },
   { href: "/recipes", label: "Recipes" },
-  { href: "/recipes/new", label: "Add Recipe" },
-  { href: "/explore", label: "Users" },
+  { href: "/recipes/new", label: "Add Recipe" }
+ 
 ];
 
 // ------------------------------------------------------
