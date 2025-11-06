@@ -35,6 +35,7 @@ import type { ReactNode } from "react";    // TypeScript type for any valid Reac
 // Each link has a `href` (target path) and a `label` (text displayed in the Nav component).
 const links = [
   { href: "/", label: "Home" },
+  { href: "/explore/new", label: "Explore"},
   { href: "/recipes", label: "Recipes" },
   { href: "/recipes/new", label: "Add Recipe" }
  

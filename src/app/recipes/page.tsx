@@ -33,6 +33,8 @@ export const metadata = {
   title: "All Recipes",
 };
 
+type RecipeWithAuthor = Recipe & {author : User};
+
 // ------------------------------------------------------
 // Component: RecipesPage
 // ------------------------------------------------------
@@ -55,8 +57,9 @@ export default async function RecipesPage() {
   // - Orders them from newest to oldest (`createdAt: "desc"`).
   // The result is a list of recipe objects with fields like
   // title, description, imageUrl, rating, etc.
-  const recipes: Recipe[] = await prisma.recipe.findMany({
+  const recipes: RecipeWithAuthor[] = await prisma.recipe.findMany({
     orderBy: { createdAt: "desc" },
+    include: {author : true},
   });
 
   // ------------------------------------------------------
